@@ -1,5 +1,5 @@
-CC	= clang
-CFLAGS	= -std=gnu99 -ggdb
+CC	= gcc
+CFLAGS	= -ggdb
 UNAME_M := $(shell uname -m)
 
 .PHONY: x86 x86_64 arm

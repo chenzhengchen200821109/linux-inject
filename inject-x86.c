@@ -3,7 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/user.h>
-#include <wait.h>
+#include <sys/wait.h>
 
 #include "utils.h"
 #include "ptrace.h"
@@ -34,7 +34,7 @@ void injectSharedLibrary(long mallocaddr, long freeaddr, long dlopenaddr)
 	//   ecx = size of the path to the shared library we want to load
 
 	// for some reason it's adding 1 to esi, so subtract 1 from it
-	asm("dec %esi");
+	//asm("dec %esi"); //NO, it is wrong given GCC
 
 	// call malloc() from within the target process
 	asm(
@@ -52,7 +52,7 @@ void injectSharedLibrary(long mallocaddr, long freeaddr, long dlopenaddr)
 	// call __libc_dlopen_mode() to load the shared library
 	asm(
 		// 2nd argument to __libc_dlopen_mode(): flag = RTLD_LAZY
-		"push $1 \n"
+		"push $0x80000001 \n"
 		// 1st argument to __libc_dlopen_mode(): filename = the buffer we allocated earlier
 		"push %ebx \n"
 		// call __libc_dlopen_mode()
@@ -135,7 +135,7 @@ int main(int argc, char** argv)
 	int libPathLength = strlen(libPath) + 1;
 
 	int mypid = getpid();
-	long mylibcaddr = getlibcaddr(mypid);
+	long mylibcaddr = getlibcaddr(mypid); //0xb7e08000
 
 	// find the addresses of the syscalls that we'd like to use inside the
 	// target, as loaded inside THIS process (i.e. NOT the target process)
@@ -166,10 +166,11 @@ int main(int argc, char** argv)
 	memcpy(&regs, &oldregs, sizeof(struct user_regs_struct));
 
 	// find a good address to copy code to
-	long addr = freespaceaddr(target) + sizeof(long);
+	long addr = freespaceaddr(target); //+ sizeof(long); //0x8049004
 
 	// now that we have an address to copy code to, set the target's eip to it.
-	regs.eip = addr;
+	// for some reason it's subtract 2 from eip, so adding 2 to it. (GCC)
+	regs.eip = addr + 2; 
 
 	// pass arguments to my function injectSharedLibrary() by loading them
 	// into the right registers. see comments in injectSharedLibrary() for
@@ -212,6 +213,14 @@ int main(int argc, char** argv)
 
 	// now that the new code is in place, let the target run our injected code.
 	ptrace_cont(target);
+    // the following code only used for debug
+    //while (1)
+    //{
+    //    ptrace_singlestep(target);
+    //    ptrace_getregs(target, &oldregs);
+    //    if (oldregs.eip == 0x8049009)
+    //        break;
+    //}
 
 	// at this point, the target should have run malloc(). check its return
 	// value to see if it succeeded, and bail out cleanly if it didn't.

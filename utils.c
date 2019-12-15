@@ -125,8 +125,9 @@ long freespaceaddr(pid_t pid)
 		exit(1);
 	while(fgets(line, 850, fp) != NULL)
 	{
+        //input format conversion
 		sscanf(line, "%lx-%*lx %s %*s %s %*d", &addr, perms, str);
-
+        //code segment
 		if(strstr(perms, "x") != NULL)
 		{
 			break;
@@ -231,6 +232,7 @@ int checkloaded(pid_t pid, char* libname)
 
 long getFunctionAddress(char* funcName)
 {
+    //libc.so.6 is a soft link to libc-2.19.so
 	void* self = dlopen("libc.so.6", RTLD_LAZY);
 	void* funcAddr = dlsym(self, funcName);
 	return (long)funcAddr;

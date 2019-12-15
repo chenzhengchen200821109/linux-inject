@@ -3,7 +3,8 @@
 #include <string.h>
 #include <sys/ptrace.h>
 #include <sys/user.h>
-#include <wait.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <time.h>
 
 #include "ptrace.h"
@@ -109,6 +110,15 @@ void ptrace_cont(pid_t target)
 
 	// make sure the target process received SIGTRAP after stopping.
 	checktargetsig(target);
+}
+
+void ptrace_singlestep(pid_t target)
+{
+    if (ptrace(PTRACE_SINGLESTEP, target, NULL, NULL) == -1)
+    {
+        fprintf(stderr, "ptrace(PTRACE_SINGLESTEP) failed\n");
+        exit(1);
+    }
 }
 
 /*
@@ -237,9 +247,9 @@ void ptrace_write(int pid, unsigned long addr, void *vptr, int len)
  * - int pid: pid of the target process
  *
  */
-
 void checktargetsig(int pid)
 {
+    struct user_regs_struct regs;
 	// check the signal that the child stopped with.
 	siginfo_t targetsig = ptrace_getsiginfo(pid);
 
@@ -250,6 +260,8 @@ void checktargetsig(int pid)
 		fprintf(stderr, "instead of expected SIGTRAP, target stopped with signal %d: %s\n", targetsig.si_signo, strsignal(targetsig.si_signo));
 		fprintf(stderr, "sending process %d a SIGSTOP signal for debugging purposes\n", pid);
 		ptrace(PTRACE_CONT, pid, NULL, SIGSTOP);
+        waitpid(pid, 0, 0);
+        ptrace_getregs(pid, &regs);
 		exit(1);
 	}
 }

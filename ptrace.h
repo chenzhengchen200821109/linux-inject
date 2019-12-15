@@ -8,6 +8,7 @@ void ptrace_attach(pid_t target);
 void ptrace_detach(pid_t target);
 void ptrace_getregs(pid_t target, struct REG_TYPE* regs);
 void ptrace_cont(pid_t target);
+void ptrace_singlestep(pid_t target);
 void ptrace_setregs(pid_t target, struct REG_TYPE* regs);
 siginfo_t ptrace_getsiginfo(pid_t target);
 void ptrace_read(int pid, unsigned long addr, void *vptr, int len);
